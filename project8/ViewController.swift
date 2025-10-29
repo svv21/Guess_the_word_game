@@ -9,9 +9,14 @@ class ViewController: UIViewController {
     
     var activatedButtons = [UIButton]()
     var solutions = [String]()
+    var solvedWords = [String]()
     
     var level: Int = 1
-    var score: Int = 0
+    var score: Int = 0 {
+        didSet {
+            scoreLabel.text = "Score: \(score)"
+        }
+    }
     
     override func loadView() {
         view = UIView()
@@ -20,7 +25,7 @@ class ViewController: UIViewController {
         scoreLabel = UILabel()
         scoreLabel.translatesAutoresizingMaskIntoConstraints = false
         scoreLabel.textAlignment = .right
-        scoreLabel.text = "Score: \(score)"
+        scoreLabel.text = "Score: 0"
         view.addSubview(scoreLabel)
         
         cluesLabel = UILabel()
@@ -62,6 +67,9 @@ class ViewController: UIViewController {
         
         let buttonsView = UIView()
         buttonsView.translatesAutoresizingMaskIntoConstraints = false
+        buttonsView.layer.borderColor = UIColor.lightGray.cgColor
+        buttonsView.layer.borderWidth = 1
+        buttonsView.layer.cornerRadius = 8
         view.addSubview(buttonsView)
         
         NSLayoutConstraint.activate([
@@ -145,6 +153,7 @@ class ViewController: UIViewController {
                     
                     let bits = answer.components(separatedBy: "|")
                     letterBits += bits
+                    letterBits.shuffle()
                 }
             }
         }
@@ -164,14 +173,16 @@ class ViewController: UIViewController {
         
         if level == 3 {
             let alert = UIAlertController(title: "That's all!", message: nil, preferredStyle: .alert)
-            let action = UIAlertAction(title: "OK", style: .cancel)
+            let action = UIAlertAction(title: "OK", style: .cancel, handler: {_ in
+                self.solutions.removeAll(keepingCapacity: true)
+                self.letterButtons.forEach { $0.isHidden = true }
+                self.cluesLabel.text = nil
+                self.answersLabel.text = nil
+            }
+            )
+            
             alert.addAction(action)
             present(alert, animated: true)
-            
-            solutions.removeAll(keepingCapacity: true)
-            letterButtons.forEach { $0.isHidden = true }
-            
-            return
         }
         
         solutions.removeAll(keepingCapacity: true)
@@ -185,6 +196,7 @@ class ViewController: UIViewController {
         guard let answer = currentAnswer.text else { return }
         
         if let position = solutions.firstIndex(of: answer) {
+            solvedWords.append(answer)
             activatedButtons.removeAll()
             
             var array = answersLabel.text?.components(separatedBy: "\n")
@@ -194,14 +206,23 @@ class ViewController: UIViewController {
             
             currentAnswer.text = ""
             score += 1
-            scoreLabel.text = "Score: \(score)"
             
-            if score % 7 == 0 {
-                let alert = UIAlertController(title: "You win!", message: "Congratulations, you can continue!", preferredStyle: .alert)
+            if solvedWords.count % 7 == 0 {
+                let alert = UIAlertController(title: "You are win!", message: "Congratulations, you can continue!", preferredStyle: .alert)
                 let action = UIAlertAction(title: "OK", style: .default, handler: updateLevel)
                 alert.addAction(action)
                 present(alert, animated: true)
             }
+        } else {
+            let alert = UIAlertController(title: "Wrong answer!", message: nil, preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: "Try again", style: .default, handler: { _ in
+                self.activatedButtons.forEach { button in
+                    button.isHidden = false
+                }
+                self.currentAnswer.text = ""
+                self.score -= 1
+            }))
+            present(alert, animated: true)
         }
     }
 
